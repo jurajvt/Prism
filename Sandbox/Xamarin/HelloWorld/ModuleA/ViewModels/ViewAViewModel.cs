@@ -4,10 +4,12 @@ using Prism.Mvvm;
 using Prism.Navigation;
 using Prism;
 using Prism.AppModel;
+using System.Diagnostics;
+using Prism.Navigation.TabbedPages;
 
 namespace ModuleA.ViewModels
 {
-    public class ViewAViewModel : BindableBase, INavigationAware, IActiveAware, IApplicationLifecycle
+    public class ViewAViewModel : BindableBase, IAutoInitialize, INavigationAware, IActiveAware, IApplicationLifecycleAware, IPageLifecycleAware
     {
         private readonly INavigationService _navigationService;
 
@@ -20,7 +22,12 @@ namespace ModuleA.ViewModels
 
         private bool _canNavigate = true;
 
-
+        string _message = "No Message Set.";
+        public string Message
+        {
+            get => _message;
+            set => SetProperty(ref _message, value);
+        }
 
         public bool CanNavigate
         {
@@ -72,7 +79,7 @@ namespace ModuleA.ViewModels
         async void Navigate()
         {
             CanNavigate = false;
-            await _navigationService.NavigateAsync("ViewC/ViewB", useModalNavigation: false);
+            await _navigationService.SelectTabAsync("ViewC");
             CanNavigate = true;
         }
 
@@ -81,12 +88,12 @@ namespace ModuleA.ViewModels
             SaveCommand.IsActive = IsActive;
         }
 
-        public void OnNavigatedFrom(NavigationParameters parameters)
+        public void OnNavigatedFrom(INavigationParameters parameters)
         {
 
         }
 
-        public void OnNavigatedTo(NavigationParameters parameters)
+        public void OnNavigatedTo(INavigationParameters parameters)
         {
             var navigationMode = parameters.GetNavigationMode();
             if (navigationMode == NavigationMode.Back)
@@ -95,7 +102,7 @@ namespace ModuleA.ViewModels
                 Title = "Went to New Page";
         }
 
-        public void OnNavigatingTo(NavigationParameters parameters)
+        public void OnNavigatingTo(INavigationParameters parameters)
         {
 
         }
@@ -108,6 +115,16 @@ namespace ModuleA.ViewModels
         public void OnSleep()
         {
             Title = "Aplpication went to sleep";
+        }
+
+        public void OnAppearing()
+        {
+            Debug.WriteLine("ViewA is appearing");
+        }
+
+        public void OnDisappearing()
+        {
+            Debug.WriteLine("ViewA is disappearing");
         }
     }
 }

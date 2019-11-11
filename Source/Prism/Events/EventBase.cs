@@ -1,6 +1,3 @@
-
-
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -120,6 +117,23 @@ namespace Prism.Events
             }
 
             return returnList;
+        }
+
+        /// <summary>
+        /// Forces the PubSubEvent to remove any subscriptions that no longer have an execution strategy.
+        /// </summary>
+        public void Prune()
+        {
+            lock (Subscriptions)
+            {
+                for (var i = Subscriptions.Count - 1; i >= 0; i--)
+                {
+                    if (_subscriptions[i].GetExecutionStrategy() == null)
+                    {
+                        _subscriptions.RemoveAt(i);
+                    }
+                }
+            }
         }
     }
 }

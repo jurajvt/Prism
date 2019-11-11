@@ -1,10 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using System.Windows.Input;
-using Prism.Mvvm;
 using System.Threading;
 
 namespace Prism.Commands
@@ -22,8 +20,6 @@ namespace Prism.Commands
         /// <summary>
         /// Creates a new instance of a <see cref="DelegateCommandBase"/>, specifying both the execute action and the can execute function.
         /// </summary>
-        /// <param name="executeMethod">The <see cref="Action"/> to execute when <see cref="ICommand.Execute"/> is invoked.</param>
-        /// <param name="canExecuteMethod">The <see cref="Func{Object,Bool}"/> to invoked when <see cref="ICommand.CanExecute"/> is invoked.</param>
         protected DelegateCommandBase()
         {
             _synchronizationContext = SynchronizationContext.Current;
@@ -51,10 +47,10 @@ namespace Prism.Commands
         }
 
         /// <summary>
-        /// Raises <see cref="DelegateCommandBase.CanExecuteChanged"/> so every command invoker
+        /// Raises <see cref="CanExecuteChanged"/> so every command invoker
         /// can requery to check if the command can execute.
-        /// <remarks>Note that this will trigger the execution of <see cref="DelegateCommandBase.InvokeCanExecute"/> once for each invoker.</remarks>
         /// </summary>
+        /// <remarks>Note that this will trigger the execution of <see cref="CanExecuteChanged"/> once for each invoker.</remarks>
         [SuppressMessage("Microsoft.Design", "CA1030:UseEventsWhereAppropriate")]
         public void RaiseCanExecuteChanged()
         {
@@ -71,8 +67,17 @@ namespace Prism.Commands
             return CanExecute(parameter);
         }
 
+        /// <summary>
+        /// Handle the internal invocation of <see cref="ICommand.Execute(object)"/>
+        /// </summary>
+        /// <param name="parameter">Command Parameter</param>
         protected abstract void Execute(object parameter);
 
+        /// <summary>
+        /// Handle the internal invocation of <see cref="ICommand.CanExecute(object)"/>
+        /// </summary>
+        /// <param name="parameter"></param>
+        /// <returns><see langword="true"/> if the Command Can Execute, otherwise <see langword="false" /></returns>
         protected abstract bool CanExecute(object parameter);
 
         /// <summary>

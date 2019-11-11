@@ -2,13 +2,50 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using Xunit;
+using System.Threading.Tasks;
 using Prism.Events;
+using Xunit;
 
 namespace Prism.Tests.Events
 {
     public class PubSubEventFixture
     {
+        [Fact]
+        public void EnsureSubscriptionListIsEmptyAfterPublishingAMessage()
+        {
+            var pubSubEvent = new TestablePubSubEvent<string>();
+            SubscribeExternalActionWithoutReference(pubSubEvent);
+            GC.Collect();
+            pubSubEvent.Publish("testPayload");
+            Assert.True(pubSubEvent.BaseSubscriptions.Count == 0, "Subscriptionlist is not empty");
+        }
+
+        [Fact]
+        public void EnsureSubscriptionListIsNotEmptyWithoutPublishOrSubscribe()
+        {
+            var pubSubEvent = new TestablePubSubEvent<string>();
+            SubscribeExternalActionWithoutReference(pubSubEvent);
+            GC.Collect();
+            Assert.True(pubSubEvent.BaseSubscriptions.Count == 1, "Subscriptionlist is empty");
+        }
+
+        [Fact]
+        public void EnsureSubscriptionListIsEmptyAfterSubscribeAgainAMessage()
+        {
+            var pubSubEvent = new TestablePubSubEvent<string>();
+            SubscribeExternalActionWithoutReference(pubSubEvent);
+            GC.Collect();
+            SubscribeExternalActionWithoutReference(pubSubEvent);
+            pubSubEvent.Prune();
+            Assert.True(pubSubEvent.BaseSubscriptions.Count == 1, "Subscriptionlist is empty");
+        }
+
+        private static void SubscribeExternalActionWithoutReference(TestablePubSubEvent<string> pubSubEvent)
+        {
+            pubSubEvent.Subscribe(new ExternalAction().ExecuteAction);
+        }
+
+
         [Fact]
         public void CanSubscribeAndRaiseEvent()
         {
@@ -293,7 +330,7 @@ namespace Prism.Tests.Events
         }
 
         [Fact]
-        public void ShouldNotExecuteOnGarbageCollectedDelegateReferenceWhenNotKeepAlive()
+        public async Task ShouldNotExecuteOnGarbageCollectedDelegateReferenceWhenNotKeepAlive()
         {
             var PubSubEvent = new TestablePubSubEvent<string>();
 
@@ -305,6 +342,7 @@ namespace Prism.Tests.Events
 
             WeakReference actionEventReference = new WeakReference(externalAction);
             externalAction = null;
+            await Task.Delay(100);
             GC.Collect();
             Assert.False(actionEventReference.IsAlive);
 
@@ -312,7 +350,7 @@ namespace Prism.Tests.Events
         }
 
         [Fact]
-        public void ShouldNotExecuteOnGarbageCollectedDelegateReferenceWhenNotKeepAliveNonGeneric()
+        public async Task ShouldNotExecuteOnGarbageCollectedDelegateReferenceWhenNotKeepAliveNonGeneric()
         {
             var pubSubEvent = new TestablePubSubEvent();
 
@@ -324,6 +362,7 @@ namespace Prism.Tests.Events
 
             var actionEventReference = new WeakReference(externalAction);
             externalAction = null;
+            await Task.Delay(100);
             GC.Collect();
             Assert.False(actionEventReference.IsAlive);
 
@@ -331,7 +370,7 @@ namespace Prism.Tests.Events
         }
 
         [Fact]
-        public void ShouldNotExecuteOnGarbageCollectedFilterReferenceWhenNotKeepAlive()
+        public async Task ShouldNotExecuteOnGarbageCollectedFilterReferenceWhenNotKeepAlive()
         {
             var PubSubEvent = new TestablePubSubEvent<string>();
 
@@ -347,6 +386,7 @@ namespace Prism.Tests.Events
             wasCalled = false;
             WeakReference filterReference = new WeakReference(filter);
             filter = null;
+            await Task.Delay(100);
             GC.Collect();
             Assert.False(filterReference.IsAlive);
 

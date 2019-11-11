@@ -18,6 +18,22 @@ namespace Prism.Forms.Tests.Services
         }
 
         [Fact]
+        public void CancelActionSheetButton_WithNoAction_DoNotThrowException()
+        {
+            var cancel = ActionSheetButton.CreateCancelButton("Foo");
+            var ex = Record.Exception(() => cancel.PressButton());
+            Assert.Null(ex);
+        }
+
+        [Fact]
+        public void DestroyActionSheetButton_WithNoAction_DoNotThrowException()
+        {
+            var destroy = ActionSheetButton.CreateDestroyButton("Foo");
+            var ex = Record.Exception(() => destroy.PressButton());
+            Assert.Null(ex);
+        }
+
+        [Fact]
         public async Task DisplayActionSheetNoButtons_ShouldThrowException()
         {
             var service = new PageDialogServiceMock("cancel", _applicationProvider);
@@ -99,6 +115,7 @@ namespace Prism.Forms.Tests.Services
             await DisplayActionSheet_PressButton_UsingGenericCommand(null);
         }
 
+#pragma warning disable CS0618 // Type or member is obsolete
         [Fact]
         public async Task DisplayActionSheet_CancelButtonPressed_UsingCommand()
         {
@@ -196,6 +213,7 @@ namespace Prism.Forms.Tests.Services
                     break;
             }
         }
+#pragma warning restore CS0618 // Type or member is obsolete
 
         #endregion Obsolete ActionSheetButton using Commands
 

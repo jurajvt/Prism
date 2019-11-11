@@ -1,76 +1,47 @@
-﻿using Microsoft.Practices.Unity;
-using Prism.AppModel;
-using Prism.Common;
-using Prism.Events;
+﻿using Prism.Ioc;
+using Unity;
+using System.Collections.Generic;
+#if __ANDROID__
+using System;
 using Prism.Logging;
-using Prism.Modularity;
-using Prism.Mvvm;
-using Prism.Navigation;
-using Prism.Services;
-using Prism.Unity.Extensions;
-using Prism.Unity.Modularity;
-using Prism.Unity.Navigation;
-using Xamarin.Forms;
-using DependencyService = Prism.Services.DependencyService;
+using Unity.Resolution;
+using Xamarin.Forms.Internals;
+#endif
 
+#if !NETSTANDARD1_0
+[assembly: Xamarin.Forms.XmlnsDefinition("http://prismlibrary.com", "Prism.Unity")]
+#endif
 namespace Prism.Unity
 {
-    public abstract class PrismApplication : PrismApplicationBase<IUnityContainer>
+    public abstract class PrismApplication : PrismApplicationBase
     {
-        const string _navigationServiceName = "UnityPageNavigationService";
+        /// <summary>
+        /// Initializes a new instance of PrismApplication using the default constructor
+        /// </summary>
+        protected PrismApplication() 
+            : base() { }
 
-        public PrismApplication(IPlatformInitializer initializer = null) : base (initializer) { }
+        /// <summary>
+        /// Initializes a new instance of <see cref="PrismApplication" /> with a <see cref="IPlatformInitializer" />.
+        /// Used when there are specific types that need to be registered on the platform.
+        /// </summary>
+        /// <param name="platformInitializer">The <see cref="IPlatformInitializer"/>.</param>
+        protected PrismApplication(IPlatformInitializer platformInitializer)
+            : base(platformInitializer) { }
 
-        protected override void ConfigureViewModelLocator()
+        /// <summary>
+        /// Initializes a new instance of <see cref="PrismApplication" /> with a <see cref="IPlatformInitializer" />.
+        /// Used when there are specific types that need to be registered on the platform.
+        /// Also determines whether to set the <see cref="DependencyResolver" /> for resolving Renderers and Platform Effects.
+        /// </summary>
+        /// <param name="platformInitializer">The <see cref="IPlatformInitializer"/>.</param>
+        /// <param name="setFormsDependencyResolver">Should <see cref="PrismApplication" /> set the <see cref="DependencyResolver" />.</param>
+        protected PrismApplication(IPlatformInitializer platformInitializer, bool setFormsDependencyResolver)
+            : base(platformInitializer, setFormsDependencyResolver) { }
+
+        protected override IContainerExtension CreateContainerExtension()
         {
-            ViewModelLocationProvider.SetDefaultViewModelFactory((view, type) =>
-            {
-                ParameterOverrides overrides = null;
-
-                var page = view as Page;
-                if (page != null)
-                {
-                    overrides = new ParameterOverrides
-                    {
-                        { "navigationService", CreateNavigationService(page) }
-                    };
-                }
-
-                return Container.Resolve(type, overrides);
-            });
-        }
-
-        protected override IUnityContainer CreateContainer()
-        {
-            return new UnityContainer();
-        }
-
-        protected override IModuleManager CreateModuleManager()
-        {
-            return Container.Resolve<IModuleManager>();
-        }
-
-        protected override INavigationService CreateNavigationService()
-        {
-            return Container.Resolve<INavigationService>(_navigationServiceName);
-        }
-
-        protected override void ConfigureContainer()
-        {
-            Container.AddNewExtension<DependencyServiceExtension>();
-
-            Container.RegisterInstance<ILoggerFacade>(Logger);
-            Container.RegisterInstance<IModuleCatalog>(ModuleCatalog);
-
-            Container.RegisterType<IApplicationProvider, ApplicationProvider>(new ContainerControlledLifetimeManager());
-            Container.RegisterType<IApplicationStore, ApplicationStore>(new ContainerControlledLifetimeManager());
-            Container.RegisterType<INavigationService, UnityPageNavigationService>(_navigationServiceName);
-            Container.RegisterType<IModuleManager, ModuleManager>(new ContainerControlledLifetimeManager());
-            Container.RegisterType<IModuleInitializer, UnityModuleInitializer>(new ContainerControlledLifetimeManager());
-            Container.RegisterType<IEventAggregator, EventAggregator>(new ContainerControlledLifetimeManager());
-            Container.RegisterType<IDependencyService, DependencyService>(new ContainerControlledLifetimeManager());
-            Container.RegisterType<IPageDialogService, PageDialogService>(new ContainerControlledLifetimeManager());
-            Container.RegisterType<IDeviceService, DeviceService>(new ContainerControlledLifetimeManager());
+            return new UnityContainerExtension(new UnityContainer());
         }
     }
 }

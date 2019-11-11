@@ -1,7 +1,10 @@
-﻿using Prism.Navigation;
+﻿using Prism.AppModel;
+using Prism.Mvvm;
+using Prism.Navigation;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using Xamarin.Forms;
 
@@ -11,17 +14,44 @@ namespace Prism.Common
     {
         public static void InvokeViewAndViewModelAction<T>(object view, Action<T> action) where T : class
         {
-            T viewAsT = view as T;
-            if (viewAsT != null)
+            if (view is T viewAsT)
                 action(viewAsT);
 
-            var element = view as BindableObject;
-            if (element != null)
+            if (view is BindableObject element)
             {
-                var viewModelAsT = element.BindingContext as T;
-                if (viewModelAsT != null)
+                if (element.BindingContext is T viewModelAsT)
                 {
                     action(viewModelAsT);
+                }
+            }
+
+            if (view is Page page && page.GetPartialViews() is List<BindableObject> partials)
+            {
+                foreach (var partial in partials)
+                {
+                    InvokeViewAndViewModelAction(partial, action);
+                }
+            }
+        }
+
+        public static async Task InvokeViewAndViewModelActionAsync<T>(object view, Func<T, Task> action) where T : class
+        {
+            if (view is T viewAsT)
+                await action(viewAsT);
+
+            if (view is BindableObject element)
+            {
+                if (element.BindingContext is T viewModelAsT)
+                {
+                    await action(viewModelAsT);
+                }
+            }
+
+            if (view is Page page && page.GetPartialViews() is List<BindableObject> partials)
+            {
+                foreach (var partial in partials)
+                {
+                    await InvokeViewAndViewModelActionAsync(partial, action);
                 }
             }
         }
@@ -45,34 +75,30 @@ namespace Prism.Common
 
         private static void DestroyChildren(Page page)
         {
-            if (page is MasterDetailPage)
+            switch(page)
             {
-                DestroyPage(((MasterDetailPage)page).Master);
-                DestroyPage(((MasterDetailPage)page).Detail);
-            }
-            else if (page is TabbedPage)
-            {
-                var tabbedPage = (TabbedPage)page;
-                foreach (var item in tabbedPage.Children.Reverse())
-                {
-                    DestroyPage(item);
-                }
-            }
-            else if (page is CarouselPage)
-            {
-                var carouselPage = (CarouselPage)page;
-                foreach (var item in carouselPage.Children.Reverse())
-                {
-                    DestroyPage(item);
-                }
-            }
-            else if (page is NavigationPage)
-            {
-                var navigationPage = (NavigationPage)page;
-                foreach (var item in navigationPage.Navigation.NavigationStack.Reverse())
-                {
-                    DestroyPage(item);
-                }
+                case MasterDetailPage mdp:
+                    DestroyPage(mdp.Master);
+                    DestroyPage(mdp.Detail);
+                    break;
+                case TabbedPage tabbedPage:
+                    foreach (var item in tabbedPage.Children.Reverse())
+                    {
+                        DestroyPage(item);
+                    }
+                    break;
+                case CarouselPage carouselPage:
+                    foreach (var item in carouselPage.Children.Reverse())
+                    {
+                        DestroyPage(item);
+                    }
+                    break;
+                case NavigationPage navigationPage:
+                    foreach (var item in navigationPage.Navigation.NavigationStack.Reverse())
+                    {
+                        DestroyPage(item);
+                    }
+                    break;
             }
         }
 
@@ -86,53 +112,88 @@ namespace Prism.Common
         }
 
 
-        public static Task<bool> CanNavigateAsync(object page, NavigationParameters parameters)
+        public static Task<bool> CanNavigateAsync(object page, INavigationParameters parameters)
         {
-            var confirmNavigationItem = page as IConfirmNavigationAsync;
-            if (confirmNavigationItem != null)
+            if (page is IConfirmNavigationAsync confirmNavigationItem)
                 return confirmNavigationItem.CanNavigateAsync(parameters);
 
-            var bindableObject = page as BindableObject;
-            if (bindableObject != null)
+            if (page is BindableObject bindableObject)
             {
-                var confirmNavigationBindingContext = bindableObject.BindingContext as IConfirmNavigationAsync;
-                if (confirmNavigationBindingContext != null)
+                if (bindableObject.BindingContext is IConfirmNavigationAsync confirmNavigationBindingContext)
                     return confirmNavigationBindingContext.CanNavigateAsync(parameters);
             }
 
             return Task.FromResult(CanNavigate(page, parameters));
         }
 
-        public static bool CanNavigate(object page, NavigationParameters parameters)
+        public static bool CanNavigate(object page, INavigationParameters parameters)
         {
-            var confirmNavigationItem = page as IConfirmNavigation;
-            if (confirmNavigationItem != null)
+            if (page is IConfirmNavigation confirmNavigationItem)
                 return confirmNavigationItem.CanNavigate(parameters);
 
-            var bindableObject = page as BindableObject;
-            if (bindableObject != null)
+            if (page is BindableObject bindableObject)
             {
-                var confirmNavigationBindingContext = bindableObject.BindingContext as IConfirmNavigation;
-                if (confirmNavigationBindingContext != null)
+                if (bindableObject.BindingContext is IConfirmNavigation confirmNavigationBindingContext)
                     return confirmNavigationBindingContext.CanNavigate(parameters);
             }
 
             return true;
         }
 
-        public static void OnNavigatedFrom(object page, NavigationParameters parameters)
+        public static void OnNavigatedFrom(object page, INavigationParameters parameters)
         {
             if (page != null)
                 InvokeViewAndViewModelAction<INavigatedAware>(page, v => v.OnNavigatedFrom(parameters));
         }
 
-        public static void OnNavigatingTo(object page, NavigationParameters parameters)
+        public static async Task OnInitializedAsync(object page, INavigationParameters parameters)
         {
-            if (page != null)
-                InvokeViewAndViewModelAction<INavigatingAware>(page, v => v.OnNavigatingTo(parameters));
+            if (page is null) return;
+
+            InvokeViewAndViewModelAction<IAbracadabra>(page, v => Abracadabra(v, parameters));
+            InvokeViewAndViewModelAction<IInitialize>(page, v => v.Initialize(parameters));
+            await InvokeViewAndViewModelActionAsync<IInitializeAsync>(page, async v => await v.InitializeAsync(parameters));
         }
 
-        public static void OnNavigatedTo(object page, NavigationParameters parameters)
+        internal static void Abracadabra(object page, IEnumerable<KeyValuePair<string, object>> parameters)
+        {
+            var props = page.GetType()
+                            .GetProperties(BindingFlags.Instance | BindingFlags.Public)
+                            .Where(x => x.CanWrite);
+
+            foreach(var prop in props)
+            {
+                (var name, var isRequired) = prop.GetAutoInitializeProperty();
+
+                if(!parameters.HasKey(name, out var key))
+                {
+                    if (isRequired)
+                        throw new ArgumentNullException(name);
+                    continue;
+                }
+
+                prop.SetValue(page, parameters.GetValue(key, prop.PropertyType));
+            }
+        }
+
+        private static bool HasKey(this IEnumerable<KeyValuePair<string, object>> parameters, string name, out string key)
+        {
+            key = parameters.Select(x => x.Key).FirstOrDefault(k => k.Equals(name, StringComparison.InvariantCultureIgnoreCase));
+            return !string.IsNullOrEmpty(key);
+        }
+
+        private static (string Name, bool IsRequired) GetAutoInitializeProperty(this PropertyInfo pi)
+        {
+            var attr = pi.GetCustomAttribute<AutoInitializeAttribute>();
+            if(attr is null)
+            {
+                return (pi.Name, false);
+            }
+
+            return (string.IsNullOrEmpty(attr.Name) ? pi.Name : attr.Name, attr.IsRequired);
+        }
+
+        public static void OnNavigatedTo(object page, INavigationParameters parameters)
         {
             if (page != null)
                 InvokeViewAndViewModelAction<INavigatedAware>(page, v => v.OnNavigatedTo(parameters));
@@ -140,8 +201,7 @@ namespace Prism.Common
 
         public static Page GetOnNavigatedToTarget(Page page, Page mainPage, bool useModalNavigation)
         {
-            Page target = null;
-
+            Page target;
             if (useModalNavigation)
             {
                 var previousPage = GetPreviousPage(page, page.Navigation.ModalStack);
@@ -220,10 +280,56 @@ namespace Prism.Common
         public static void HandleSystemGoBack(Page previousPage, Page currentPage)
         {
             var parameters = new NavigationParameters();
-            parameters.Add(KnownNavigationParameters.NavigationMode, NavigationMode.Back);
+            parameters.GetNavigationParametersInternal().Add(KnownInternalParameters.NavigationMode, NavigationMode.Back);
             OnNavigatedFrom(previousPage, parameters);
             OnNavigatedTo(GetOnNavigatedToTargetFromChild(currentPage), parameters);
             DestroyPage(previousPage);
+        }
+
+        internal static bool HasDirectNavigationPageParent(Page page)
+        {
+            return page?.Parent != null && page?.Parent is NavigationPage;
+        }
+
+        internal static bool HasNavigationPageParent(Page page) =>
+            HasNavigationPageParent(page, out var _);
+
+        internal static bool HasNavigationPageParent(Page page, out NavigationPage navigationPage)
+        {
+            if (page?.Parent != null)
+            {
+                if (page.Parent is NavigationPage navParent)
+                {
+                    navigationPage = navParent;
+                    return true;
+                }
+                else if ((page.Parent is TabbedPage || page.Parent is CarouselPage) && page.Parent?.Parent is NavigationPage navigationParent)
+                {
+                    navigationPage = navigationParent;
+                    return true;
+                }
+            }
+
+            navigationPage = null;
+            return false;
+        }
+
+        internal static bool IsSameOrSubclassOf<T>(Type potentialDescendant)
+        {
+            if (potentialDescendant == null)
+                return false;
+
+            Type potentialBase = typeof(T);
+
+            return potentialDescendant.GetTypeInfo().IsSubclassOf(potentialBase)
+                   || potentialDescendant == potentialBase;
+        }
+
+        internal static void SetAutowireViewModelOnPage(Page page)
+        {
+            var vmlResult = Mvvm.ViewModelLocator.GetAutowireViewModel(page);
+            if (vmlResult == null)
+                Mvvm.ViewModelLocator.SetAutowireViewModel(page, true);
         }
     }
 }

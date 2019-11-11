@@ -13,6 +13,10 @@ namespace HelloWorld.ViewModels
     {
         INavigationService _navigationService;
 
+        public string NavigatePath => "MyNavigationPage/ViewA";
+
+        public string Message => "Hello from MyMasterDetailViewModel";
+
         public DelegateCommand<string> NavigateCommand { get; set; }
         public MyMasterDetailViewModel(INavigationService navigationService)
         {
@@ -20,17 +24,21 @@ namespace HelloWorld.ViewModels
             NavigateCommand = new DelegateCommand<string>(Navigate);
         }
 
-        private void Navigate(string name)
+        private async void Navigate(string name)
         {
-            _navigationService.NavigateAsync(name);
+            var result = await _navigationService.NavigateAsync(name);
+            if (!result.Success)
+            {
+
+            }
         }
 
-        public override void OnNavigatedFrom(NavigationParameters parameters)
+        public override void OnNavigatedFrom(INavigationParameters parameters)
         {
             base.OnNavigatedFrom(parameters);
         }
 
-        public override void OnNavigatedTo(NavigationParameters parameters)
+        public override void OnNavigatedTo(INavigationParameters parameters)
         {
             base.OnNavigatedTo(parameters);
         }

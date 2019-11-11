@@ -1,11 +1,7 @@
-
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Text;
-using Prism.Mvvm;
 
 namespace Prism.Mvvm
 {
@@ -44,6 +40,15 @@ namespace Prism.Mvvm
             {
                 return this.validationResults.Count != 0;
             }
+        }
+
+        /// <summary>
+        /// Returns all the errors in the container
+        /// </summary>
+        /// <returns>The dictionary of errors per property.</returns>
+        public Dictionary<string, List<T>> GetErrors()
+        {
+            return validationResults;
         }
 
         /// <summary>
